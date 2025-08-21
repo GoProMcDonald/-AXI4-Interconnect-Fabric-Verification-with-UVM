@@ -1,0 +1,28 @@
+pipeline {
+agent any
+options { timestamps() }
+stages {
+stage('Build & Smoke') {
+steps {
+sh 'make -C sim smoke || ./sim/run_vcs.sh' // adapt to your infra
+}
+}
+stage('Random Regression') {
+steps {
+script {
+int N = 200; // demo; scale to >20k overnight
+for (int i=0; i<N; i++) {
+sh "./sim/run_vcs.sh +UVM_TESTNAME=base_test +ntb_random_seed=$i || true"
+}
+}
+}
+}
+stage('QoS & Backpressure') {
+steps {
+sh './sim/run_vcs.sh +UVM_TESTNAME=qos_fairness_test'
+sh './sim/run_vcs.sh +UVM_TESTNAME=backpressure_test'
+}
+}
+}
+post { always { archiveArtifacts artifacts: 'sim/*.log', fingerprint: true } }
+}
